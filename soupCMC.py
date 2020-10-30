@@ -79,4 +79,32 @@ for row in rows:
 #Create df
 btc = pd.DataFrame(data, columns = ['Date', 'Open*', 'High', 'Low', 'Close**', 'Volume', 'Market Cap'])
 
+#Reverse the order of the df
+btc = btc.iloc[::-1].reset_index(drop=True)
+
+#Save df to csv
+pd.DataFrame.to_csv(btc, 'D:\Python\coins\Bitcoin.csv', sep=',', index='Date')
+
+#Scrape another page to create the list with all coins
+url = 'https://coinmarketcap.com/all/views/all/'
+response = requests.get(url)
+response.status_code
+response.content
+soup = BeautifulSoup(response.content, 'html.parser')
+table = soup.find_all('table')[2]
+len(table) #to make sure that we have only table to parse
+
+#Table with 200 coins
+for row in table.find_all('tr'):
+    for cell in row.find_all('td'):
+        print(cell.text)
+
+#Save the result in the txt file
+with open ('table.txt', 'w') as r:
+    for row in table.find_all('tr'):
+        for cell in row.find_all('td'): 
+            r.write(cell.text.ljust(25))
+        r.write('\n')
+
+
     
