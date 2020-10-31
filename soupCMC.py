@@ -59,8 +59,7 @@ for i in ten_coins:
     print(requests.get('https://coinmarketcap.com/currencies/' + i 
                         + '/historical-data/?start=20130429&end=20201022').status_code)
 
-#Extract historical data
-#Only bitcoin
+#Extract only bitcoin
 page = requests.get('https://coinmarketcap.com/currencies/'+
                         'bitcoin/historical-data/?start=20130429&end=20201022')
 #Try dfnt parsers (lxml or html.parser)
@@ -85,26 +84,40 @@ btc = btc.iloc[::-1].reset_index(drop=True)
 #Save df to csv
 pd.DataFrame.to_csv(btc, 'D:\Python\coins\Bitcoin.csv', sep=',', index='Date')
 
-#Scrape another page to create the list with all coins
+#Table with 200 coins (Load more button prevents to scrape more)
 url = 'https://coinmarketcap.com/all/views/all/'
 response = requests.get(url)
 response.status_code
 response.content
 soup = BeautifulSoup(response.content, 'html.parser')
 table = soup.find_all('table')[2]
-len(table) #to make sure that we have only table to parse
-
-#Table with 200 coins
+len(table) #page has 3 tables, but we extract only the main one, with the values
+#Scrape the whole table (200 coins)
 for row in table.find_all('tr'):
     for cell in row.find_all('td'):
         print(cell.text)
-
 #Save the result in the txt file
-with open ('table.txt', 'w') as r:
+with open ('200Coins.txt', 'w') as r:
     for row in table.find_all('tr'):
         for cell in row.find_all('td'): 
             r.write(cell.text.ljust(25))
         r.write('\n')
 
-
+#All coins
+num = 1
+while num < 38: #38 pages in sum to scrape
+    url = 'https://coinmarketcap.com/{}'.format(num) 
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        table = soup.find('table', class_ = "cmc-table cmc-table___11lFC cmc-table-homepage___2_guh")
+        with open ('AllCoins.txt', 'a') as r:
+            for row in table.find_all('tr'):
+                for cell in row.find_all('td'): 
+                    r.write(cell.text.ljust(20))
+                r.write('\n')
+    else:
+        print('No response')
+        print(num)              
+    num += 1 
     
