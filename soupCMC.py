@@ -84,7 +84,7 @@ btc = btc.iloc[::-1].reset_index(drop=True)
 #Save df to csv
 pd.DataFrame.to_csv(btc, 'D:\Python\coins\Bitcoin.csv', sep=',', index='Date')
 
-#Table with 200 coins (Load more button prevents to scrape more)
+#Table with 200 coins ("Load More" button prevents to scrape all the coins)
 url = 'https://coinmarketcap.com/all/views/all/'
 response = requests.get(url)
 response.status_code
@@ -103,14 +103,15 @@ with open ('200Coins.txt', 'w') as r:
             r.write(cell.text.ljust(25))
         r.write('\n')
 
-#All coins
+#Table with all coins in the txt file
 num = 1
-while num < 38: #38 pages in sum to scrape
+while num < 39: #38 pages in sum to scrape
     url = 'https://coinmarketcap.com/{}'.format(num) 
     response = requests.get(url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
         table = soup.find('table', class_ = "cmc-table cmc-table___11lFC cmc-table-homepage___2_guh")
+        #Save the result in the txt file
         with open ('AllCoins.txt', 'a') as r:
             for row in table.find_all('tr'):
                 for cell in row.find_all('td'): 
@@ -120,4 +121,34 @@ while num < 38: #38 pages in sum to scrape
         print('No response')
         print(num)              
     num += 1 
-    
+
+#Save names, volumes and mcap into the df
+coin_li = []
+vol_li = []
+mcap_li = []
+num = 1
+while num < 39:
+    url = 'https://coinmarketcap.com/{}'.format(num) 
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        table = soup.find('table', class_ = "cmc-table cmc-table___11lFC cmc-table-homepage___2_guh")
+        for row in table.find_all('tr'):
+            for cell in row.find_all('td'):
+                for name in cell.find_all('p', class_ = 'Text-sc-1eb5slv-0 iTmTiC'):
+                    print(name.text)
+                    coin_li.append(name.text)
+                for volume in cell.find_all('p', class_ = 'Text-sc-1eb5slv-0 iOrfwG font_weight_500___2Lmmi'):
+                    print(volume.text)
+                    vol_li.append(volume.text) 
+                for mcap in cell.find_all('p', class_ = 'Text-sc-1eb5slv-0 hVAibX'):
+                    print(mcap.text)
+                    mcap_li.append(mcap.text)    
+    else:
+        print('No response')
+        print(num)              
+    num += 1    
+
+VolMcap = pd.DataFrame(list(zip(coin_li, vol_li, mcap_li)), 
+               columns =['Name', 'Volume', 'Market Cap'])
+VolMcap.index += 1 #shift the index
