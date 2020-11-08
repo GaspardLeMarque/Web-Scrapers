@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import pandas as pd
 import json
+import time
 
 cmc = requests.get('https://coinmarketcap.com/')
 soup = BeautifulSoup(cmc.content, 'html.parser')
@@ -33,31 +34,6 @@ for i in content.findAll('p'):
 
 #Return browser-like version of the page to narrow the search
 print(soup.prettify())
-
-#Narrow the search domain
-page_data = soup.find('script', id='__NEXT_DATA__', type="application/json")
-
-#Save all the rows in the JSON format
-coin_data = json.loads(page_data.contents[0]) #.contents[0] removes 'script' tags
-
-#Create the list of dicts that contains only coins data
-coin_list = coin_data['props']['initialState']['cryptocurrency']['listingLatest']['data']
-
-#Create a dict {'coin ID': 'coin name'}
-coins = {}
-for i in coin_list:
-    coins[str(i['id'])] = i['slug']
-
-#Save vals to the list    
-    coins_l = list(coins.values())
-for i in coins_l:
-    print(str(i))
-    
-#Check status for 10 coins (10 = limit of requests)
-ten_coins = coins_l[0:10]
-for i in ten_coins:
-    print(requests.get('https://coinmarketcap.com/currencies/' + i 
-                        + '/historical-data/?start=20130429&end=20201022').status_code)
 
 #Extract only bitcoin
 page = requests.get('https://coinmarketcap.com/currencies/'+
@@ -152,3 +128,40 @@ while num < 39:
 VolMcap = pd.DataFrame(list(zip(coin_li, vol_li, mcap_li)), 
                columns =['Name', 'Volume', 'Market Cap'])
 VolMcap.index += 1 #shift the index
+
+#Create a dict with all coins IDs and slugs
+coins = {}
+num = 1
+while num < 39:
+    url = 'https://coinmarketcap.com/{}'.format(num) 
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    page_data = soup.find('script', id='__NEXT_DATA__', type="application/json")
+    #Save all the rows in the JSON format
+    coin_data = json.loads(page_data.contents[0]) #.contents[0] removes 'script' tags
+
+    #Create the list of dicts that contains only coins data
+    coin_list = coin_data['props']['initialState']['cryptocurrency']['listingLatest']['data']
+    #Create a dict {'coin ID': 'coin name'}
+    for i in coin_list:
+        coins[str(i['id'])] = i['slug']
+    for i in coin_list:
+        print(i['slug'])    
+    num += 1   
+    
+#Save dict to txt file 
+with open('coins_slugs.txt', 'w') as file:
+     file.write(json.dumps(coins, indent=""))    
+    
+#Plug-in dict vals to the GET request 
+for i in coins.values(): 
+    response = requests.get('https://coinmarketcap.com/currencies/'+ i
+                            + '/historical-data/?start=20130429&end=20200811')
+    print(response)
+    if response.status_code == 200:
+        print('https://coinmarketcap.com/currencies/' + i)  
+        time.sleep(10)
+
+    else:
+        print('No response')
+        time.sleep(30)
