@@ -4,6 +4,8 @@ import pandas as pd
 import json
 import time
 
+##############################Exploratory section#############################
+
 cmc = requests.get('https://coinmarketcap.com/')
 soup = BeautifulSoup(cmc.content, 'html.parser')
 
@@ -23,7 +25,7 @@ for i in content.findAll('p'):
     print(i.text)
 
 #Print the main table's col names from thead tag
-content = soup.find('thead', {"class": "rc-table-thead"})
+content = soup.find('thead')
 for i in content.findAll('p'):
     print(i.text)
     
@@ -35,30 +37,50 @@ for i in content.findAll('p'):
 #Return browser-like version of the page to narrow the search
 print(soup.prettify())
 
-#Extract only bitcoin
-page = requests.get('https://coinmarketcap.com/currencies/'+
+###########################Extract only bitcoin###############################
+
+response = requests.get('https://coinmarketcap.com/currencies/'+
                         'bitcoin/historical-data/?start=20130429&end=20201022')
-#Try dfnt parsers (lxml or html.parser)
-soup = BeautifulSoup(page.text, 'lxml')
+soup = BeautifulSoup(response.content, 'html.parser')
+page_data = soup.find('script', id='__NEXT_DATA__', type="application/json")
+coin_data = json.loads(page_data.contents[0])
+quotes = coin_data['props']['initialState']['cryptocurrency']['ohlcvHistorical']['1']['quotes']
 
-#Parsing the table
-data = []
-table_body = soup.find('tbody')
+timestamp = []
+p_open = []
+p_close = []
+p_high = []
+p_low = []
+volume = []
+mcap = []
 
-rows = table_body.find_all('tr')
-for row in rows:
-    cols = row.find_all('td')
-    cols = [x.text.strip() for x in cols]
-    data.append([x for x in cols if x])
+for i in quotes:
+    timestamp.append(i['quote']['USD']['timestamp'])
+    p_open.append(i['quote']['USD']['open'])
+    p_high.append(i['quote']['USD']['high'])
+    p_low.append(i['quote']['USD']['low'])
+    p_close.append(i['quote']['USD']['close']) 
+    volume.append(i['quote']['USD']['volume'])
+    mcap.append(i['quote']['USD']['market_cap'])
+    
+btc = pd.DataFrame(columns = ['Date', 'Open*', 'High', 'Low', 'Close**', 'Volume', 'Market Cap'])    
+btc['Date'] = timestamp
+btc['Open*'] = p_open
+btc['High'] = p_high
+btc['Low'] = p_low
+btc['Close**'] = p_close
+btc['Volume'] = volume
+btc['Market Cap'] = mcap
 
-#Create df
-btc = pd.DataFrame(data, columns = ['Date', 'Open*', 'High', 'Low', 'Close**', 'Volume', 'Market Cap'])
-
-#Reverse the order of the df
-btc = btc.iloc[::-1].reset_index(drop=True)
+#Shift the index
+btc.index += 1 
 
 #Save df to csv
 pd.DataFrame.to_csv(btc, 'D:\Python\coins\Bitcoin.csv', sep=',', index='Date')
+
+##############################################################################
+###############################OPTIONAL SECTION###############################
+##############################################################################
 
 #Table with 200 coins ("Load More" button prevents to scrape all the coins)
 url = 'https://coinmarketcap.com/all/views/all/'
@@ -129,6 +151,10 @@ VolMcap = pd.DataFrame(list(zip(coin_li, vol_li, mcap_li)),
                columns =['Name', 'Volume', 'Market Cap'])
 VolMcap.index += 1 #shift the index
 
+##############################################################################
+########################Extract all coins with the loop#######################
+##############################################################################
+
 #Create a dict with all coins IDs and slugs
 coins = {}
 num = 1
@@ -149,7 +175,7 @@ while num < 39:
         print(i['slug'])    
     num += 1   
     
-#Save dict to txt file 
+#Save dict to a txt file 
 with open('coins_slugs.txt', 'w') as file:
      file.write(json.dumps(coins, indent=""))    
     
