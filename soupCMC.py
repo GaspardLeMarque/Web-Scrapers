@@ -175,19 +175,54 @@ while num < 39:
         print(i['slug'])    
     num += 1   
     
-#Save dict to a txt file 
+#Save dict to txt file 
 with open('coins_slugs.txt', 'w') as file:
      file.write(json.dumps(coins, indent=""))    
     
 #Plug-in dict vals to the GET request 
-for i in coins.values(): 
-    response = requests.get('https://coinmarketcap.com/currencies/'+ i
-                            + '/historical-data/?start=20130429&end=20200811')
+dfs = {} #dict of dataframes
+for i in coins: 
+    response = requests.get(f'https://coinmarketcap.com/currencies/{coins[i]}/historical-data/?start=20130429&end=20201111')
     print(response)
     if response.status_code == 200:
-        print('https://coinmarketcap.com/currencies/' + i)  
+        print('Scraping ' + i + ' now')    
         time.sleep(10)
-
+        soup = BeautifulSoup(response.content, 'html.parser')
+        page_data = soup.find('script', id='__NEXT_DATA__', type="application/json")
+#Convert data into json format to operate with the nested dicts        
+        coin_data = json.loads(page_data.contents[0])
+#Dict with quotes (OHLCV+MCap)        
+        quotes = coin_data['props']['initialState']['cryptocurrency']['ohlcvHistorical'][i]['quotes']
+#Dict with id, name, symbol and quotes
+        info = coin_data['props']['initialState']['cryptocurrency']['ohlcvHistorical'][i]
+#Renew the lists for each coin        
+        timestamp = []
+        p_open = []
+        p_high = []
+        p_low = []
+        p_close = []
+        volume = []
+        mcap = []
+#Scrape columns for each coin
+        for j in quotes:
+            timestamp.append(j['quote']['USD']['timestamp'])
+            p_open.append(j['quote']['USD']['open'])
+            p_high.append(j['quote']['USD']['high'])
+            p_low.append(j['quote']['USD']['low'])
+            p_close.append(j['quote']['USD']['close']) 
+            volume.append(j['quote']['USD']['volume'])
+            mcap.append(j['quote']['USD']['market_cap'])
+#Create dict for each coin        
+        quotes_dict = {'Date': timestamp, 
+                       'Open*': p_open, 
+                       'High': p_high, 
+                       'Low': p_low, 
+                       'Close**': p_close, 
+                       'Volume': volume, 
+                       'Market Cap': mcap}
+#Create dataframe for each coin
+        dfs[i] = pd.DataFrame(quotes_dict, columns = ['Date', 'Open*', 'High', 'Low', 'Close**', 'Volume', 'Market Cap'])
+        dfs[i].index += 1 
     else:
         print('No response')
-        time.sleep(30)
+        time.sleep(30)     
