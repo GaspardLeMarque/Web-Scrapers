@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 import json
 import time
+from datetime import datetime
 
 ##############################Exploratory section#############################
 
@@ -181,8 +182,9 @@ with open('coins_slugs.txt', 'w') as file:
     
 #Plug-in dict vals to the GET request 
 dfs = {} #dict of dataframes
+today = str(datetime.now().strftime('%Y%m%d'))
 for i in coins: 
-    response = requests.get(f'https://coinmarketcap.com/currencies/{coins[i]}/historical-data/?start=20130429&end=20201111')
+    response = requests.get(f'https://coinmarketcap.com/currencies/{coins[i]}/historical-data/?start=20130429&end={today}')
     print(response)
     if response.status_code == 200:
         print('Scraping ' + i + ' now')    
